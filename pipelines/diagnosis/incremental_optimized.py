@@ -185,9 +185,15 @@ def run_incremental_diagnosis_pipeline_optimized(
             # Add UP-RS mapping
             up_rs_map = up_rs[["Codi UP", "RS"]].copy()
             up_rs_map.columns = [up_column, "RS"]
+            before_merge = len(df_chunk)
             df_chunk = df_chunk.merge(
                 up_rs_map, on=up_column, how="left"
             ).fillna("UNKNOWN")
+            unknown_count = (df_chunk["RS"] == "UNKNOWN").sum()
+            if unknown_count > 0:
+                logger.warning(f"Found {unknown_count} rows with unknown UP codes (out of {before_merge} total)")
+                unknown_ups = df_chunk[df_chunk["RS"] == "UNKNOWN"][up_column].unique()
+                logger.warning(f"Unknown UP codes: {list(unknown_ups)[:10]}...")  # Show first 10
 
             # Build aggregations efficiently
             total_daily = build_daily_diagnosis_counts_optimized(df_chunk)
@@ -234,8 +240,8 @@ def run_diagnosis_pipeline_main_optimized(config) -> None:
         schema=config.SCHEMA,
         table_name=config.TABLE_NAME,
         date_column=config.DATE_COLUMN,
-        up_column="UP",
-        diag_code_column="DIAG_CODE",
+        up_column=config.UP_COLUMN,
+        diag_code_column=config.DIAG_CODE_COLUMN,
         up_rs=pd.read_excel(config.UP_RS_FILE, sheet_name=config.UP_RS_SHEET),
         incremental_dir=config.PIPELINE_DATA_DIR / "incremental",
         final_file=config.PIPELINE_DATA_DIR / "finals" / "diagnosis_final.parquet",

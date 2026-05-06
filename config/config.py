@@ -65,8 +65,10 @@ class DiagnosisConfig(Config):
     """Diagnosis pipeline configuration."""
 
     SCHEMA = "z_inv"
-    TABLE_NAME = "P1038_visites"  # May differ - adjust as needed
-    DATE_COLUMN = "DATA_VISITA"
+    TABLE_NAME = "P1038_prstb015r_filtrat"
+    DATE_COLUMN = "data_visita"
+    UP_COLUMN = "up_c"
+    DIAG_CODE_COLUMN = "problema_salut_c"
 
     # Data paths
     PIPELINE_DATA_DIR = Config.DATA_DIR / "diagnosis_pipeline"
