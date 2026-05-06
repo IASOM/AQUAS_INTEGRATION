@@ -17,6 +17,29 @@ from .aggregation_optimized import (
 logger = setup_logging()
 
 
+def validate_table_columns(
+    conn,
+    schema: str,
+    table_name: str,
+    required_columns: list[str],
+) -> None:
+    """Validate that the required columns exist in the target table."""
+    query = """
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+    """
+    existing = pd.read_sql_query(query, conn, params=[schema, table_name])
+    existing_columns = {str(c).upper() for c in existing["COLUMN_NAME"].tolist()}
+
+    missing = [col for col in required_columns if str(col).upper() not in existing_columns]
+    if missing:
+        raise ValueError(
+            f"Missing columns in {schema}.{table_name}: {missing}. "
+            f"Available columns: {sorted(existing_columns)}"
+        )
+
+
 def get_diagnosis_data_for_year_optimized(
     conn,
     schema: str,
@@ -120,6 +143,14 @@ def run_incremental_diagnosis_pipeline_optimized(
     conn = get_connection(db_server, db_database, auth_mode=auth_mode)
 
     try:
+        # Validate table schema before querying
+        validate_table_columns(
+            conn=conn,
+            schema=schema,
+            table_name=table_name,
+            required_columns=[date_column, up_column, diag_code_column],
+        )
+
         # Get data range
         min_date, max_date = get_min_max_date(
             conn=conn,
